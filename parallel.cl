@@ -1,3 +1,7 @@
+/*
+ * rupesh.majhi@tuni.fi
+ */
+
 // Dimensions of the rendered window
 #define WINDOW_WIDTH 1024
 #define WINDOW_HEIGHT 1024
