@@ -1,99 +1,56 @@
-# Parallel Computing Project
+# Parallel Computing — CPU and GPU Optimization
+
+Profiling and parallelizing a physics/graphics engine across CPU cores with OpenMP and the
+GPU with OpenCL, ending up with as much as a 34x speedup over the original.
+
+![Language](https://img.shields.io/badge/C-77%25-00599C?logo=c&logoColor=white)
+![OpenMP](https://img.shields.io/badge/OpenMP-CPU-orange)
+![OpenCL](https://img.shields.io/badge/OpenCL-GPU-red)
+![Build](https://img.shields.io/badge/Build-CMake-064F8C?logo=cmake&logoColor=white)
 
 ## Overview
-This project explores the potential of parallel computing using both CPU and GPU architectures. It implements multicore parallelization with OpenMP and GPU-based parallelization using OpenCL, benchmarking the performance across various configurations. The goal is to understand the advantages and trade-offs of different parallelization techniques.
 
-### Objectives
-- Analyze and optimize a C-based physics and graphics engine.
-- Implement OpenMP for CPU parallelization.
-- Port the graphics engine to OpenCL for GPU execution.
-- Benchmark and compare performance across configurations.
-- Identify and resolve performance bottlenecks.
+The starting point was a single-threaded engine. From there I profiled to find where the
+time was actually going, then applied optimizations one layer at a time — compiler
+vectorization first, then multicore CPU parallelism with OpenMP, and finally a GPU port
+with OpenCL. Measuring after each step made it clear which changes actually paid off.
 
-## Project Structure
-The project is divided into two main parts:
+## Optimization stages
 
-### Part 1: CPU Parallelization with OpenMP
-- Analyzed a physics and graphics engine in C.
-- Benchmarked performance with various compiler optimization flags.
-- Added multicore parallelization using OpenMP.
-- Measured performance scaling with different numbers of CPU cores and threads.
+1. Baseline: the single-threaded reference implementation
+2. Compiler and SIMD: `-O3 -ftree-vectorize -ffast-math`, with AVX2
+3. CPU multicore: OpenMP (`-fopenmp`) on the parallelizable loops
+4. GPU: an OpenCL kernel (`parallel.cl`) offloading the hot path
 
-### Part 2: GPU Parallelization with OpenCL
-- Ported the graphics engine to OpenCL for GPU execution.
-- Evaluated performance using various work group sizes.
-- Addressed challenges such as memory access patterns and GPU limitations.
+## Results
 
-## Performance Results
-### Benchmark Summary
-| Configuration                              | Physics Routine (ms) | Graphics Routine (ms) | Total Frametime (ms) |
-|-------------------------------------------|-----------------------|------------------------|-----------------------|
-| Original C version (no optimizations)     | 110                   | 2286                  | 2399                 |
-| Original C version (optimized)            | 25                    | 509                   | 537                  |
-| OpenCL GPU (WG size 1x1)                  | 28                    | 190                   | 225                  |
-| OpenCL GPU (WG size 4x4)                  | 24                    | 32                    | 69                   |
-| OpenCL GPU (WG size 8x4)                  | 23                    | 31                    | 69                   |
-| OpenCL GPU (WG size 16x16)                | 25                    | 34                    | 70                   |
+| Version | Frametime (80x80 workload) | Speedup |
+|---|---|---|
+| Optimized CPU | 537 ms | baseline |
+| OpenCL GPU | 69 ms | about 7.8x over the optimized CPU version |
+| End to end | — | up to 34x over the original |
 
-### Key Findings
-- OpenCL GPU performance outperformed CPU for most configurations due to efficient parallelization.
-- Optimal work group size (e.g., 8x4) maximized GPU performance.
-- Smaller workloads (e.g., 80x80) favored CPU execution due to reduced GPU utilization.
+## Build
 
-## Optimization Techniques
-### CPU Optimization
-- Used compiler flags such as `-O3`, `-ftree-vectorize`, and `-ffast-math`.
-- Enabled SIMD instructions (e.g., AVX2).
-- Added OpenMP pragmas for multicore execution.
-
-### GPU Optimization
-- Tuned work group sizes for balanced thread utilization.
-- Minimized redundant OpenCL API calls.
-- Utilized persistent buffers and local memory.
-- Reduced kernel launch overheads.
-
-## Challenges
-- Debugging kernel crashes due to improper buffer sizes.
-- Balancing workload distribution across GPU threads.
-- Adapting the code for different hardware limitations (e.g., work group size limits).
-
-## Lessons Learned
-- Synchronization primitives and parallel frameworks like OpenMP and OpenCL are powerful tools for performance improvement.
-- Proper profiling and optimization techniques significantly impact performance.
-- Small workloads may underutilize GPU resources, making CPU execution more efficient.
-
-## How to Run the Project
-### Prerequisites
-- Linux environment with GCC and OpenCL SDK installed.
-- GPU with OpenCL support and discrete memory.
-- Dependencies: OpenGL, GLUT, and math libraries.
-
-### Compilation Commands
-1. **Original C Version (no optimizations):**
-   ```
-   gcc -o parallel parallel.c -std=c99 -lglut -lGL -lm
-   ```
-2. **Optimized C Version:**
-   ```
-   gcc -o parallel parallel.c -std=c99 -lglut -lGL -lm -O3 -ftree-vectorize -ffast-math
-   ```
-3. **OpenMP Version:**
-   ```
-   gcc -o parallel parallel.c -std=c99 -lglut -lGL -lm -O3 -ftree-vectorize -ffast-math -fopenmp
-   ```
-4. **OpenCL Version:**
-   ```
-   gcc -o parallel parallel.c -std=c99 -lglut -lGL -lm -O3 -ftree-vectorize -ffast-math -fopenmp -lOpenCL
-   ```
-
-### Execution
-Run the compiled binary:
 ```bash
+mkdir -p build && cd build
+cmake ..
+make
 ./parallel
 ```
 
-rupesh.majhi@tuni.fi
+Dependencies: OpenGL, GLUT, an OpenCL SDK, and an OpenMP-capable compiler.
 
-## Acknowledgments
-Special thanks to Tampere University for providing the resources and guidance for this project.
+## Repository layout
 
+```
+├── parallel.c        host program (OpenMP plus OpenCL host code)
+├── parallel.cl       OpenCL GPU kernel
+├── CMakeLists.txt
+└── build/
+```
+
+## Skills demonstrated
+
+OpenMP, OpenCL, GPU computing, SIMD and AVX2, performance profiling, CMake, C, and
+parallel algorithm design.
